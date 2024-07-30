@@ -6,7 +6,6 @@ import * as path from "path";
 import * as puppeteer from "puppeteer";
 import * as dotenv from "dotenv";
 
-// .env 파일에서 환경 변수 로드
 dotenv.config();
 
 let lastLinks: { [key: string]: string | null } = {};
@@ -27,7 +26,6 @@ async function getArticleContent(url: string): Promise<string> {
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2" });
 
-    // iframe 내부로 이동
     const frames = await page.frames();
     const contentFrame = frames.find((frame) =>
       frame.url().includes("PostView.naver")
@@ -91,10 +89,10 @@ async function monitorRssFeed(rssUrl: string | undefined, name: string) {
   }
 }
 
-const rssUrl1 = process.env.RSS_URL1; // 황호영
-const rssUrl2 = process.env.RSS_URL2; // 김영조
+const rssUrl1 = process.env.RSS_URL1;
+const rssUrl2 = process.env.RSS_URL2;
 
-// 주기적으로 RSS 피드를 확인
+// 순서대로 확인
 setInterval(() => {
   monitorRssFeed(rssUrl1, "황호영");
 }, 5000); // 5초마다 확인
