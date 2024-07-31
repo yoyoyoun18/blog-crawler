@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as puppeteer from "puppeteer";
 import * as dotenv from "dotenv";
+import { parseStringPromise } from "xml2js";
 
 dotenv.config();
 
@@ -66,7 +67,7 @@ function saveContentToFile(content: string, fileName: string): void {
   });
 }
 
-async function monitorRssFeed(rssUrl: string | undefined, name: string) {
+async function monitorRssFeed(rssUrl: string | undefined, name: any) {
   if (!rssUrl) {
     console.error(`RSS URL for ${name} is not defined.`);
     return;
@@ -89,14 +90,89 @@ async function monitorRssFeed(rssUrl: string | undefined, name: string) {
   }
 }
 
+async function fetchRssFeedForBlex(url: string): Promise<any[]> {
+  try {
+    const response = await axios.get(url);
+    const feed = await parseStringPromise(response.data);
+    return feed.rss.channel[0].item;
+  } catch (error) {
+    console.error("Error fetching RSS feed:", error);
+    return [];
+  }
+}
+
+async function getArticleContentForBlex(description: string): Promise<string> {
+  try {
+    const $ = cheerio.load(description);
+    const contentText = $.text().trim();
+    console.log("Description content:", contentText);
+    return contentText;
+  } catch (error) {
+    console.error("Error parsing article content:", error);
+    return "";
+  }
+}
+
+async function monitorRssFeedForBlex(rssUrl: string | undefined, name: any) {
+  if (!rssUrl) {
+    console.error(`RSS URL for ${name} is not defined.`);
+    return;
+  }
+
+  const feed = await fetchRssFeedForBlex(rssUrl);
+  if (feed && feed.length > 0) {
+    const latestEntry = feed[0];
+    if (latestEntry.link[0] !== lastLinks[rssUrl]) {
+      lastLinks[rssUrl] = latestEntry.link[0];
+      console.log(`New article found: ${latestEntry.title[0]}`);
+      const articleContent = await getArticleContentForBlex(
+        latestEntry.description[0]
+      );
+      console.log(articleContent);
+      const dateFormatted = getCurrentDateFormatted();
+      const fileName = `article_${name}_${dateFormatted}.txt`;
+      saveContentToFile(articleContent, fileName);
+    } else {
+      console.log("No new articles.");
+    }
+  }
+}
+
 const rssUrl1 = process.env.RSS_URL1;
 const rssUrl2 = process.env.RSS_URL2;
+const rssUrl3 = process.env.RSS_URL3;
+const rssUrl4 = process.env.RSS_URL4;
+const rssUrl5 = process.env.RSS_URL5;
+const rssUrl6 = process.env.RSS_URL6;
+
+const teamMate1 = process.env.TEAM_MATE1;
+const teamMate2 = process.env.TEAM_MATE2;
+const teamMate3 = process.env.TEAM_MATE3;
+const teamMate4 = process.env.TEAM_MATE4;
+const teamMate5 = process.env.TEAM_MATE5;
+const teamMate6 = process.env.TEAM_MATE6;
 
 // 순서대로 확인
 setInterval(() => {
-  monitorRssFeed(rssUrl1, "황호영");
-}, 5000); // 5초마다 확인
+  monitorRssFeed(rssUrl3, teamMate3);
+}, 3000);
 
 setInterval(() => {
-  monitorRssFeed(rssUrl2, "김영조");
-}, 7000); // 7초마다 확인
+  monitorRssFeed(rssUrl1, teamMate1);
+}, 5000);
+
+setInterval(() => {
+  monitorRssFeedForBlex(rssUrl2, teamMate2);
+}, 1000);
+
+setInterval(() => {
+  monitorRssFeed(rssUrl4, teamMate4);
+}, 9000);
+
+setInterval(() => {
+  monitorRssFeed(rssUrl5, teamMate5);
+}, 11000);
+
+setInterval(() => {
+  monitorRssFeed(rssUrl6, teamMate6);
+}, 13000);
