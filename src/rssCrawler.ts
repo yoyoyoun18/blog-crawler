@@ -6,7 +6,7 @@ import * as path from "path";
 import * as puppeteer from "puppeteer";
 import * as dotenv from "dotenv";
 import { parseStringPromise } from "xml2js";
-import * as dayjs from "dayjs";
+import dayjs from "dayjs";
 
 dotenv.config();
 
