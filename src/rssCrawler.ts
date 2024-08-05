@@ -6,8 +6,12 @@ import * as path from "path";
 import * as puppeteer from "puppeteer";
 import * as dotenv from "dotenv";
 import { parseStringPromise } from "xml2js";
+import * as dayjs from "dayjs";
 
 dotenv.config();
+
+const START_DATE = dayjs("2024-08-02");
+const END_DATE = dayjs("2024-08-05");
 
 let lastLinks: { [key: string]: string | null } = {};
 
@@ -33,27 +37,17 @@ async function getArticleContent(url: string): Promise<string> {
     );
 
     const content = await contentFrame?.evaluate(() => {
-      const element = document.querySelector(".se-main-container");
+      const element = document.querySelector(
+        ".se-main-container, ._postViewArea223532170007"
+      );
       return element ? (element as HTMLElement).innerText : "";
     });
-
     await browser.close();
     return content || "";
   } catch (error) {
     console.error("Error fetching article content:", error);
     return "";
   }
-}
-
-function getCurrentDateFormatted(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-  return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
 }
 
 function saveContentToFile(content: string, fileName: string): void {
@@ -67,6 +61,15 @@ function saveContentToFile(content: string, fileName: string): void {
   });
 }
 
+function isWithinDateRange(date: Date): boolean {
+  const articleDate = dayjs(date);
+  return (
+    (articleDate.isAfter(START_DATE) && articleDate.isBefore(END_DATE)) ||
+    articleDate.isSame(START_DATE) ||
+    articleDate.isSame(END_DATE)
+  );
+}
+
 async function monitorRssFeed(rssUrl: string | undefined, name: any) {
   if (!rssUrl) {
     console.error(`RSS URL for ${name} is not defined.`);
@@ -75,17 +78,32 @@ async function monitorRssFeed(rssUrl: string | undefined, name: any) {
 
   const feed = await fetchRssFeed(rssUrl);
   if (feed && feed.length > 0) {
-    const latestEntry = feed[0];
-    if (latestEntry.link !== lastLinks[rssUrl]) {
-      lastLinks[rssUrl] = latestEntry.link;
-      console.log(`New article found: ${latestEntry.title}`);
-      const articleContent = await getArticleContent(latestEntry.link);
-      console.log(articleContent);
-      const dateFormatted = getCurrentDateFormatted();
-      const fileName = `article_${name}_${dateFormatted}.txt`;
-      saveContentToFile(articleContent, fileName);
+    const entriesWithinRange = feed.filter((entry) =>
+      isWithinDateRange(new Date(entry.pubDate))
+    );
+
+    let combinedContent = "";
+
+    for (const entry of entriesWithinRange) {
+      console.log(`Article found within date range: ${entry.title}`);
+      const articleContent = await getArticleContent(entry.link);
+
+      combinedContent += `Title: ${entry.title}\n`;
+      combinedContent += `Date: ${dayjs(entry.pubDate).format(
+        "YYYY-MM-DD HH:mm:ss"
+      )}\n`;
+      combinedContent += `Content:\n${articleContent}\n\n`;
+      combinedContent += "-----------------------------------\n\n";
+    }
+
+    if (entriesWithinRange.length > 0) {
+      const fileName = `articles_${name}_${START_DATE.format(
+        "YYYY-MM-DD"
+      )}_to_${END_DATE.format("YYYY-MM-DD")}.txt`;
+      saveContentToFile(combinedContent, fileName);
+      console.log(`Saved ${entriesWithinRange.length} articles to ${fileName}`);
     } else {
-      console.log("No new articles.");
+      console.log("No articles found within the specified date range.");
     }
   }
 }
@@ -121,19 +139,34 @@ async function monitorRssFeedForBlex(rssUrl: string | undefined, name: any) {
 
   const feed = await fetchRssFeedForBlex(rssUrl);
   if (feed && feed.length > 0) {
-    const latestEntry = feed[0];
-    if (latestEntry.link[0] !== lastLinks[rssUrl]) {
-      lastLinks[rssUrl] = latestEntry.link[0];
-      console.log(`New article found: ${latestEntry.title[0]}`);
+    const entriesWithinRange = feed.filter((entry) =>
+      isWithinDateRange(new Date(entry.pubDate[0]))
+    );
+
+    let combinedContent = "";
+
+    for (const entry of entriesWithinRange) {
+      console.log(`Article found within date range: ${entry.title[0]}`);
       const articleContent = await getArticleContentForBlex(
-        latestEntry.description[0]
+        entry.description[0]
       );
-      console.log(articleContent);
-      const dateFormatted = getCurrentDateFormatted();
-      const fileName = `article_${name}_${dateFormatted}.txt`;
-      saveContentToFile(articleContent, fileName);
+
+      combinedContent += `Title: ${entry.title[0]}\n`;
+      combinedContent += `Date: ${dayjs(entry.pubDate[0]).format(
+        "YYYY-MM-DD HH:mm:ss"
+      )}\n`;
+      combinedContent += `Content:\n${articleContent}\n\n`;
+      combinedContent += "-----------------------------------\n\n";
+    }
+
+    if (entriesWithinRange.length > 0) {
+      const fileName = `articles_${name}_${START_DATE.format(
+        "YYYY-MM-DD"
+      )}_to_${END_DATE.format("YYYY-MM-DD")}.txt`;
+      saveContentToFile(combinedContent, fileName);
+      console.log(`Saved ${entriesWithinRange.length} articles to ${fileName}`);
     } else {
-      console.log("No new articles.");
+      console.log("No articles found within the specified date range.");
     }
   }
 }
@@ -152,27 +185,21 @@ const teamMate4 = process.env.TEAM_MATE4;
 const teamMate5 = process.env.TEAM_MATE5;
 const teamMate6 = process.env.TEAM_MATE6;
 
-// 순서대로 확인
-setInterval(() => {
-  monitorRssFeed(rssUrl3, teamMate3);
-}, 3000);
+// 모든 RSS 피드를 한 번에 처리
+async function processAllFeeds() {
+  await monitorRssFeed(rssUrl1, teamMate1);
+  await monitorRssFeedForBlex(rssUrl2, teamMate2);
+  await monitorRssFeed(rssUrl3, teamMate3);
+  await monitorRssFeed(rssUrl4, teamMate4);
+  await monitorRssFeed(rssUrl5, teamMate5);
+  await monitorRssFeed(rssUrl6, teamMate6);
+}
 
-setInterval(() => {
-  monitorRssFeed(rssUrl1, teamMate1);
-}, 5000);
-
-setInterval(() => {
-  monitorRssFeedForBlex(rssUrl2, teamMate2);
-}, 1000);
-
-setInterval(() => {
-  monitorRssFeed(rssUrl4, teamMate4);
-}, 9000);
-
-setInterval(() => {
-  monitorRssFeed(rssUrl5, teamMate5);
-}, 11000);
-
-setInterval(() => {
-  monitorRssFeed(rssUrl6, teamMate6);
-}, 13000);
+// 프로그램 실행
+processAllFeeds()
+  .then(() => {
+    console.log("All RSS feeds processed.");
+  })
+  .catch((error) => {
+    console.error("Error processing feeds:", error);
+  });

@@ -16,11 +16,12 @@ function mergeTxtFiles(directoryPath: string, outputFilePath: string) {
       const fileContents = fs.readFileSync(filePath, "utf8");
 
       // 파일 제목 추가
-      writeStream.write(`File: ${file}\n\n\n`);
+      writeStream.write(`${file}\n\n\n`);
       writeStream.write(fileContents);
 
       if (index < txtFiles.length - 1) {
         writeStream.write("\n\n\n\n\n\n"); // 각 파일의 내용 사이에 두 줄의 공백 추가
+        writeStream.write("---\n\n\n\n");
       }
     });
 
