@@ -9,7 +9,6 @@ import { parseStringPromise } from "xml2js";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import customParseFormat from "dayjs/plugin/customParseFormat";
 
 dotenv.config();
 
