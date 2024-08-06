@@ -7,11 +7,20 @@ import * as puppeteer from "puppeteer";
 import * as dotenv from "dotenv";
 import { parseStringPromise } from "xml2js";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 
 dotenv.config();
 
-const START_DATE = dayjs("2024-08-02");
-const END_DATE = dayjs("2024-08-05");
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// 한국 시간으로 설정
+dayjs.tz.setDefault("Asia/Seoul");
+
+const START_DATE = dayjs.tz("2024-08-05 18:00:00", "Asia/Seoul");
+const END_DATE = dayjs.tz(); // 현재 시각 (한국 시간)
 
 let lastLinks: { [key: string]: string | null } = {};
 
@@ -61,13 +70,9 @@ function saveContentToFile(content: string, fileName: string): void {
   });
 }
 
-function isWithinDateRange(date: Date): boolean {
+function isWithinDateRange(date: string): boolean {
   const articleDate = dayjs(date);
-  return (
-    (articleDate.isAfter(START_DATE) && articleDate.isBefore(END_DATE)) ||
-    articleDate.isSame(START_DATE) ||
-    articleDate.isSame(END_DATE)
-  );
+  return articleDate.isAfter(START_DATE) && articleDate.isBefore(END_DATE);
 }
 
 async function monitorRssFeed(rssUrl: string | undefined, name: any) {
@@ -78,8 +83,8 @@ async function monitorRssFeed(rssUrl: string | undefined, name: any) {
 
   const feed = await fetchRssFeed(rssUrl);
   if (feed && feed.length > 0) {
-    const entriesWithinRange = feed.filter((entry) =>
-      isWithinDateRange(new Date(entry.pubDate))
+    const entriesWithinRange = feed.filter((entry: any) =>
+      isWithinDateRange(entry.pubDate)
     );
 
     let combinedContent = "";
@@ -98,8 +103,8 @@ async function monitorRssFeed(rssUrl: string | undefined, name: any) {
 
     if (entriesWithinRange.length > 0) {
       const fileName = `articles_${name}_${START_DATE.format(
-        "YYYY-MM-DD"
-      )}_to_${END_DATE.format("YYYY-MM-DD")}.txt`;
+        "YYYY-MM-DD_HH-mm-ss"
+      )}_to_${END_DATE.format("YYYY-MM-DD_HH-mm-ss")}.txt`;
       saveContentToFile(combinedContent, fileName);
       console.log(`Saved ${entriesWithinRange.length} articles to ${fileName}`);
     } else {
@@ -140,7 +145,7 @@ async function monitorRssFeedForBlex(rssUrl: string | undefined, name: any) {
   const feed = await fetchRssFeedForBlex(rssUrl);
   if (feed && feed.length > 0) {
     const entriesWithinRange = feed.filter((entry) =>
-      isWithinDateRange(new Date(entry.pubDate[0]))
+      isWithinDateRange(entry.pubDate[0])
     );
 
     let combinedContent = "";
@@ -161,8 +166,8 @@ async function monitorRssFeedForBlex(rssUrl: string | undefined, name: any) {
 
     if (entriesWithinRange.length > 0) {
       const fileName = `articles_${name}_${START_DATE.format(
-        "YYYY-MM-DD"
-      )}_to_${END_DATE.format("YYYY-MM-DD")}.txt`;
+        "YYYY-MM-DD_HH-mm-ss"
+      )}_to_${END_DATE.format("YYYY-MM-DD_HH-mm-ss")}.txt`;
       saveContentToFile(combinedContent, fileName);
       console.log(`Saved ${entriesWithinRange.length} articles to ${fileName}`);
     } else {
@@ -185,7 +190,6 @@ const teamMate4 = process.env.TEAM_MATE4;
 const teamMate5 = process.env.TEAM_MATE5;
 const teamMate6 = process.env.TEAM_MATE6;
 
-// 모든 RSS 피드를 한 번에 처리
 async function processAllFeeds() {
   await monitorRssFeed(rssUrl1, teamMate1);
   await monitorRssFeedForBlex(rssUrl2, teamMate2);
@@ -195,7 +199,6 @@ async function processAllFeeds() {
   await monitorRssFeed(rssUrl6, teamMate6);
 }
 
-// 프로그램 실행
 processAllFeeds()
   .then(() => {
     console.log("All RSS feeds processed.");
