@@ -18,10 +18,8 @@ dayjs.extend(timezone);
 // 한국 시간으로 설정
 dayjs.tz.setDefault("Asia/Seoul");
 
-const START_DATE = dayjs.tz("2024-08-05 18:00:00", "Asia/Seoul");
+const START_DATE = dayjs.tz().subtract(1, "day").hour(11).minute(0).second(0);
 const END_DATE = dayjs.tz(); // 현재 시각 (한국 시간)
-
-let lastLinks: { [key: string]: string | null } = {};
 
 async function fetchRssFeed(url: string): Promise<FeedItem[]> {
   try {
@@ -46,7 +44,7 @@ async function getArticleContent(url: string): Promise<string> {
 
     const content = await contentFrame?.evaluate(() => {
       const element = document.querySelector(
-        ".se-main-container, ._postViewArea223532170007"
+        ".se-main-container, ._postViewArea223532170007, ._postViewArea223539547662"
       );
       return element ? (element as HTMLElement).innerText : "";
     });
@@ -190,12 +188,12 @@ const teamMate5 = process.env.TEAM_MATE5;
 const teamMate6 = process.env.TEAM_MATE6;
 
 async function processAllFeeds() {
-  await monitorRssFeed(rssUrl1, teamMate1);
-  await monitorRssFeedForBlex(rssUrl2, teamMate2);
-  await monitorRssFeed(rssUrl3, teamMate3);
+  // await monitorRssFeed(rssUrl1, teamMate1);
+  // await monitorRssFeedForBlex(rssUrl2, teamMate2);
+  // await monitorRssFeed(rssUrl3, teamMate3);
   await monitorRssFeed(rssUrl4, teamMate4);
-  await monitorRssFeed(rssUrl5, teamMate5);
-  await monitorRssFeed(rssUrl6, teamMate6);
+  // await monitorRssFeed(rssUrl5, teamMate5);
+  // await monitorRssFeed(rssUrl6, teamMate6);
 }
 
 processAllFeeds()
